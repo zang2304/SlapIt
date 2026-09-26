@@ -5,7 +5,7 @@ import { Server } from "socket.io";
 import { randomBytes } from "node:crypto";
 import { Game } from "./game/Game.js";
 
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(process.env.PORT) || 8080;
 
 const app = express();
 app.use(cors());
@@ -188,7 +188,6 @@ io.on("connection", (socket) => {
   });
 });
 
-const PORT = Number(process.env.PORT) || 8080;
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`Slap server running on port ${PORT}`);
