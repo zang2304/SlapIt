@@ -188,6 +188,8 @@ io.on("connection", (socket) => {
   });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`Slap server running on http://localhost:${PORT}`);
+const PORT = Number(process.env.PORT) || 8080;
+
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`Slap server running on port ${PORT}`);
 });
