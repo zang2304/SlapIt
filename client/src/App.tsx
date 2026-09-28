@@ -32,16 +32,23 @@ function App() {
       playerId: string;
       valid: boolean;
       reasons: string[];
+      claimed?: boolean;
     }) => {
+      // Someone else already claimed this slap opportunity.
+      // Do not display an invalid-slap message.
+      if (result.claimed) {
+        return;
+      }
+    
       const playerName =
         game?.players.find((p) => p.id === result.playerId)?.name ?? "Someone";
-
+    
       if (result.valid) {
         setSlapMessage(`${playerName} slapped! ${result.reasons.join(", ")}`);
       } else {
         setSlapMessage(`${playerName} made an invalid slap.`);
       }
-
+    
       window.setTimeout(() => setSlapMessage(""), 1200);
     };
 
