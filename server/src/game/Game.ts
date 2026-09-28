@@ -27,6 +27,7 @@ export class Game {
   challengeResult: { winnerId: string; loserId: string } | null = null;
   private resolutionPending = false;
   private slapWindowOpen = false;
+  private slapClaimed = false;
 
   constructor(roomCode: string, hostId: string) {
     this.roomCode = roomCode;
@@ -85,6 +86,7 @@ export class Game {
     this.challengeResult = null;
     this.resolutionPending = false;
     this.slapWindowOpen = false;
+    this.slapClaimed = false;
   }
 
   async playCard(playerId: string, onIntermediateState?: () => void): Promise<void> {
@@ -94,10 +96,6 @@ export class Game {
 
     if (this.resolutionPending) {
       throw new Error("Please wait for the challenge to resolve.");
-    }
-
-    if (this.slapWindowOpen) {
-      throw new Error("A slap opportunity is open — wait before playing.");
     }
 
     const player = this.getPlayer(playerId);
@@ -113,6 +111,7 @@ export class Game {
 
     this.challengeResult = null;
     this.message = null;
+    this.slapClaimed = false;
 
     const card = player.cards.shift()!;
     this.pile.push(card);
@@ -171,40 +170,58 @@ export class Game {
     this.checkWinner();
   }
 
-  slap(playerId: string): { valid: boolean; reasons: string[] } {
-    if (this.status !== "playing") {
-      throw new Error("Game is not in progress.");
-    }
+  slap(playerId: string): { valid: boolean; reasons: string[]; claimed?: boolean } {
+  // If another player already claimed this slap opportunity,
+  // this is not an illegal slap. They were simply slightly slower.
+  if (this.slapClaimed) {
+    return {
+      valid: false,
+      reasons: [],
+      claimed: true
+    };
+  }
 
-    if (this.resolutionPending) {
-      throw new Error("Please wait for the challenge to resolve.");
-    }
+  if (this.status !== "playing") {
+    throw new Error("Game is not in progress.");
+  }
 
-    const player = this.getPlayer(playerId);
-    if (!player) throw new Error("Player not found.");
+  if (this.resolutionPending) {
+    throw new Error("Please wait for the challenge to resolve.");
+  }
 
-    this.challengeResult = null;
+  const player = this.getPlayer(playerId);
+  if (!player) throw new Error("Player not found.");
 
-    const reasons = slapReasons(this.pile);
+  this.challengeResult = null;
 
-    if (reasons.length > 0) {
-      this.awardPileTo(player);
-      this.challenge = null;
-      this.currentPlayerIndex = this.indexOf(playerId);
-      this.message = `${player.name} slapped: ${reasons.join(", ")}.`;
-      this.checkWinner();
-      return { valid: true, reasons };
-    }
+  const reasons = slapReasons(this.pile);
 
-    this.applyInvalidSlapPenalty(player);
-    this.message = `${player.name} made an invalid slap.`;
+  if (reasons.length > 0) {
+    // This player has claimed this slap opportunity.
+    // Any subsequent slap for this same pile will be ignored.
+    this.slapClaimed = true;
+
+    this.awardPileTo(player);
+    this.challenge = null;
+    this.currentPlayerIndex = this.indexOf(playerId);
+    this.message = `${player.name} slapped: ${reasons.join(", ")}.`;
     this.checkWinner();
 
     return {
-      valid: false,
-      reasons: []
+      valid: true,
+      reasons
     };
   }
+
+  this.applyInvalidSlapPenalty(player);
+  this.message = `${player.name} made an invalid slap.`;
+  this.checkWinner();
+
+  return {
+    valid: false,
+    reasons: []
+  };
+}
 
   private applyInvalidSlapPenalty(player: Player): void {
     for (let i = 0; i < RULES.invalidSlapPenalty; i++) {
@@ -276,6 +293,7 @@ export class Game {
     this.challengeResult = null;
     this.resolutionPending = false;
     this.slapWindowOpen = false;
+    this.slapClaimed = false;
   }
 
   get currentPlayerId(): string | null {
